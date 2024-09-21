@@ -47,21 +47,40 @@ scene.add(platform);
 const letters = ["G", "L", "A", "C", "O", "M"];
 let collectedLetters = [];
 let letterMeshes = [];
-const letterMaterial = new THREE.MeshStandardMaterial({ color: 0xf207c0 });
+const letterMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
 
 function spawnLetters() {
-   letters.forEach((letter, index) => {
-      const letterGeometry = new TextGeometry(letter, {
-         font: new FontLoader().load("https://threejs.org/examples/fonts/helvetiker_regular.typeface.json"),
-         size: 1,
-         height: 0.1,
-      });
-      const letterMesh = new THREE.Mesh(letterGeometry, letterMaterial);
-      letterMesh.position.set(Math.random() * 18 - 9, 1, Math.random() * 18 - 9); // Random position
-      letterMesh.userData = { index }; // Store index for order checking
-      letterMeshes.push(letterMesh);
-      scene.add(letterMesh);
-   });
+   // Load the font once outside of the loop
+   const fontLoader = new FontLoader();
+   fontLoader.load(
+      "https://threejs.org/examples/fonts/gentilis_regular.typeface.json",
+      (font) => {
+         // This callback is executed when the font is loaded
+         letters.forEach((letter, index) => {
+            const letterGeometry = new TextGeometry(letter, {
+               font: font, // Use the loaded font here
+               size: 1.15,
+               height: 0.1,
+               curveSegments: 12,
+               bevelEnabled: true,
+               bevelThickness: 0.1,
+               bevelSize: 0.1,
+               bevelOffset: 0,
+               bevelSegments: 5,
+            });
+
+            const letterMesh = new THREE.Mesh(letterGeometry, letterMaterial);
+            letterMesh.position.set(Math.random() * 18 - 9, 1, Math.random() * 18 - 9); // Random position
+            letterMesh.userData = { index }; // Store index for order checking
+            letterMeshes.push(letterMesh);
+            scene.add(letterMesh);
+         });
+      },
+      undefined,
+      (error) => {
+         console.error("Error loading font:", error); // Error handling
+      }
+   );
 }
 
 spawnLetters(); // Call to spawn letters
