@@ -1,6 +1,10 @@
+import * as THREE from "three";
+import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
+import { TextGeometry } from "https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/geometries/TextGeometry.js";
+
 // Initialize Scene, Camera, and Renderer
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0000ff); // Set background color to blue
+scene.background = new THREE.Color("#A2C2E8"); // Set background color to blue
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -15,8 +19,8 @@ directionalLight.position.set(1, 1, 1).normalize();
 scene.add(directionalLight);
 
 // Adjust the Camera Position and Look At
-camera.position.set(0, 15, 15); // Position the camera higher and further back
-camera.lookAt(0, 0, 0); // Point the camera towards the center of the scene
+camera.position.set(0, 15, 15);
+camera.lookAt(0, 0, 0);
 
 // Resize handler
 window.addEventListener("resize", () => {
@@ -27,24 +31,47 @@ window.addEventListener("resize", () => {
 
 // Create Pac-Man
 const pacmanGeometry = new THREE.SphereGeometry(1, 32, 32, 0, Math.PI * 2, 0, Math.PI * 0.75);
-const pacmanMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Yellow color for Pac-Man
+const pacmanMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
 const pacman = new THREE.Mesh(pacmanGeometry, pacmanMaterial);
 scene.add(pacman);
 pacman.position.y = 0.5;
 
 // Create the platform
 const platformGeometry = new THREE.PlaneGeometry(20, 20);
-const platformMaterial = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 }); // Light gray color for platform
+const platformMaterial = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 });
 const platform = new THREE.Mesh(platformGeometry, platformMaterial);
 platform.rotation.x = -Math.PI / 2;
 scene.add(platform);
 
+// Create Letters
+const letters = ["G", "L", "A", "C", "O", "M"];
+let collectedLetters = [];
+let letterMeshes = [];
+const letterMaterial = new THREE.MeshStandardMaterial({ color: 0xf207c0 });
+
+function spawnLetters() {
+   letters.forEach((letter, index) => {
+      const letterGeometry = new TextGeometry(letter, {
+         font: new FontLoader().load("https://threejs.org/examples/fonts/helvetiker_regular.typeface.json"),
+         size: 1,
+         height: 0.1,
+      });
+      const letterMesh = new THREE.Mesh(letterGeometry, letterMaterial);
+      letterMesh.position.set(Math.random() * 18 - 9, 1, Math.random() * 18 - 9); // Random position
+      letterMesh.userData = { index }; // Store index for order checking
+      letterMeshes.push(letterMesh);
+      scene.add(letterMesh);
+   });
+}
+
+spawnLetters(); // Call to spawn letters
+
 // Movement variables
 const moveSpeed = 0.1;
-const gravity = 0.05; // Gravity force
+const gravity = 0.05;
 const keys = {};
-let gameStarted = false; // Flag to track if the game has started
-let gameOver = false; // Flag to track if the game is over
+let gameStarted = false;
+let gameOver = false;
 
 // Event listeners for movement
 document.addEventListener("keydown", (e) => {
@@ -56,7 +83,6 @@ document.addEventListener("keyup", (e) => {
 
 // Movement update function
 function updateMovement() {
-   // Apply movement
    if (keys["w"] || keys["ArrowUp"]) pacman.position.z -= moveSpeed;
    if (keys["s"] || keys["ArrowDown"]) pacman.position.z += moveSpeed;
    if (keys["a"] || keys["ArrowLeft"]) pacman.position.x -= moveSpeed;
@@ -65,22 +91,51 @@ function updateMovement() {
    // Check if Pac-Man is off the platform
    const isOffPlatform = Math.abs(pacman.position.x) > 10 || Math.abs(pacman.position.z) > 10;
 
-   // Apply gravity if Pac-Man is above the platform height or is off the platform
    if (pacman.position.y > 0.5 || isOffPlatform) {
-      pacman.position.y -= gravity; // Apply gravity to make Pac-Man fall
+      pacman.position.y -= gravity;
    } else {
-      pacman.position.y = 0.5; // Keep Pac-Man at platform level if it's within bounds
+      pacman.position.y = 0.5;
    }
 
    if (pacman.position.y < -15) {
       triggerGameOver();
    }
+
+   // Check for collisions with letters
+   letterMeshes.forEach((letterMesh) => {
+      if (pacman.position.distanceTo(letterMesh.position) < 1.5) {
+         handleLetterCollection(letterMesh);
+      }
+   });
 }
-// Trigger game over, show overlay, and remove Pac-Man
+
+// Handle letter collection
+function handleLetterCollection(letterMesh) {
+   const index = letterMesh.userData.index;
+   if (index === collectedLetters.length) {
+      collectedLetters.push(letters[index]);
+      scene.remove(letterMesh);
+      letterMeshes = letterMeshes.filter((mesh) => mesh !== letterMesh);
+      if (collectedLetters.length === letters.length) {
+         triggerWin();
+      }
+   } else {
+      triggerGameOver();
+   }
+}
+
+// Trigger game over
 function triggerGameOver() {
-   gameOver = true; // Set the game as over
-   pacman.visible = false; // Hide Pac-Man to simulate explosion
+   gameOver = true;
+   pacman.visible = false;
    document.getElementById("loseOverlay").style.display = "block"; // Show the "You Lose" message
+}
+
+// Trigger win
+function triggerWin() {
+   gameOver = true;
+   pacman.visible = false;
+   document.getElementById("winOverlay").style.display = "block"; // Show the "You Win" message
 }
 
 // Animate the scene
@@ -94,7 +149,7 @@ function animate() {
 
 // Start button functionality
 document.getElementById("startButton").addEventListener("click", () => {
-   gameStarted = true; // Set the game as started
-   document.getElementById("startButton").style.display = "none"; // Hide the start button
-   animate(); // Start the animation loop
+   gameStarted = true;
+   document.getElementById("startButton").style.display = "none";
+   animate();
 });
